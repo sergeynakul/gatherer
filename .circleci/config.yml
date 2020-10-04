@@ -1,0 +1,50 @@
+version: 2.1
+
+executors:
+  default:
+    working_directory: ~/repo
+    description: The official CircleCI Ruby Docker image
+    docker:
+      - image: circleci/ruby:2.6.3
+
+caches: 
+  - &bundle_cache_full v2-repo-{{ checksum "Gemfile.lock" }}
+  - &bundle_cache v2-repo-
+
+commands:
+  defaults:
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - *bundle_cache_full
+            - *bundle_cache
+      - run: sudo gem install bundler:2.1.4
+      - run: bundle config set path 'vendor/bundle'
+      - run: bundle install
+      - save_cache:
+          key: *bundle_cache_full
+          paths:
+            - vendor/bundle
+  run_linters:
+    description: command to start linters
+    steps:
+      - run: 
+          name: rubocop
+          command: bundle exec rubocop
+      - run: 
+          name: fasterer
+          command: bundle exec fasterer
+
+jobs:
+  lintering:
+    executor: default
+    steps:
+      - defaults
+      - run_linters
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - lintering
